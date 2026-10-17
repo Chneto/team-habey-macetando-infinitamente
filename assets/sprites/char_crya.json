@@ -1,0 +1,39 @@
+{
+  "key": "char_crya",
+  "file": "char_crya.png",
+  "width": 256,
+  "height": 64,
+  "frameWidth": 64,
+  "frameHeight": 64,
+  "frames": 4,
+  "animations": {
+    "idle": {
+      "frames": [
+        0
+      ],
+      "frameRate": 4,
+      "repeat": -1
+    },
+    "walk": {
+      "frames": [
+        1,
+        2
+      ],
+      "frameRate": 8,
+      "repeat": -1
+    },
+    "cast": {
+      "frames": [
+        3
+      ],
+      "frameRate": 8,
+      "repeat": 0
+    }
+  },
+  "hitbox": {
+    "width": 35,
+    "height": 42,
+    "offsetX": 14,
+    "offsetY": 13
+  }
+}

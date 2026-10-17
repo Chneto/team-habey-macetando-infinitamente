@@ -1,0 +1,39 @@
+{
+  "key": "boss_frost_warden",
+  "file": "boss_frost_warden.png",
+  "width": 384,
+  "height": 96,
+  "frameWidth": 96,
+  "frameHeight": 96,
+  "frames": 4,
+  "animations": {
+    "idle": {
+      "frames": [
+        0
+      ],
+      "frameRate": 4,
+      "repeat": -1
+    },
+    "walk": {
+      "frames": [
+        1,
+        2
+      ],
+      "frameRate": 8,
+      "repeat": -1
+    },
+    "cast": {
+      "frames": [
+        3
+      ],
+      "frameRate": 8,
+      "repeat": 0
+    }
+  },
+  "hitbox": {
+    "width": 53,
+    "height": 62,
+    "offsetX": 22,
+    "offsetY": 19
+  }
+}

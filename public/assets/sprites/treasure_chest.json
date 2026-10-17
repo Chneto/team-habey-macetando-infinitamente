@@ -1,0 +1,15 @@
+{
+  "key": "treasure_chest",
+  "file": "treasure_chest.png",
+  "width": 48,
+  "height": 48,
+  "frameWidth": 48,
+  "frameHeight": 48,
+  "frames": 1,
+  "hitbox": {
+    "width": 26,
+    "height": 31,
+    "offsetX": 11,
+    "offsetY": 10
+  }
+}
