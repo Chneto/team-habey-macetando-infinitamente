@@ -63,6 +63,16 @@ export class A11yModalManager {
     }
   }
 
+  closeAll() {
+    const openModals = document.querySelectorAll('.modal-backdrop:not(.hidden)');
+    for (const m of openModals) {
+      m.classList.add('hidden');
+      m.setAttribute('aria-hidden', 'true');
+    }
+    document.removeEventListener('keydown', this.onKeyDown);
+    this.activeModal = null;
+  }
+
   getFocusableElements(container) {
     const selector =
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -79,7 +89,8 @@ export class A11yModalManager {
       if (
         this.activeModal.id === 'shop-modal' ||
         this.activeModal.id === 'grimoire-modal' ||
-        this.activeModal.id === 'debug-modal'
+        this.activeModal.id === 'debug-modal' ||
+        this.activeModal.id === 'pause-modal'
       ) {
         e.preventDefault();
         const closeBtn = this.activeModal.querySelector('.btn-close');

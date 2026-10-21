@@ -388,15 +388,78 @@ async function runQaSuite() {
     const lvlAfter10 = await page.evaluate(() => window.__HABEY_SCENE__.player.level);
     assert.equal(lvlAfter10, lvlBefore10 + 10, 'Button 3 must add +10 levels immediately');
 
-    // Resolve queued level-ups by clicking first card or skip
-    for (let i = 0; i < 15; i++) {
-      const isVisible = await page.locator('#levelup-modal').evaluate((el) => !el.classList.contains('hidden'));
-      if (!isVisible) break;
-      await page.click('#btn-lvl-skip');
-      await page.waitForTimeout(150);
+    // Resolve queued level-ups by clicking skip until all are processed
+    await page.waitForFunction(() => {
+      const modal = document.getElementById('levelup-modal');
+      return modal && !modal.classList.contains('hidden');
+    }, { timeout: 5000 });
+
+    for (let i = 0; i < 20; i++) {
+      const isVisible = await page.evaluate(() => {
+        const modal = document.getElementById('levelup-modal');
+        return modal && !modal.classList.contains('hidden');
+      });
+      if (isVisible) {
+        await page.click('#btn-lvl-skip');
+        await page.waitForTimeout(150);
+      } else {
+        const pending = await page.evaluate(() => window.__HABEY_SCENE__?.pendingLevelUps || 0);
+        if (pending === 0) break;
+        await page.waitForTimeout(100);
+      }
     }
 
+    await page.waitForFunction(() => {
+      const modal = document.getElementById('levelup-modal');
+      const scene = window.__HABEY_SCENE__;
+      return modal && modal.classList.contains('hidden') && (!scene || scene.pendingLevelUps === 0);
+    });
+
     console.log('✔ Check 5: All 11 Debug Panel (P / ⚙️ DEV) buttons & Level-Up Reroll/Skip verified.');
+
+    // CHECK 5b: Pause Modal, Dynamic Lighting, Floating Text & Return to Character Select
+    await page.click('#btn-pause-game');
+    await page.waitForFunction(() => !document.getElementById('pause-modal').classList.contains('hidden'));
+    const pauseState = await page.evaluate(() => {
+      const s = window.__HABEY_SCENE__;
+      return {
+        isPausedManually: s.isPausedManually,
+        physicsPaused: s.physics.world.isPaused,
+        charName: document.getElementById('pause-char-name')?.textContent,
+        lightingSystemActive: Boolean(s.lightingSystem?.lightSprite?.active),
+        floatingTextSystemActive: Boolean(s.floatingTextSystem?.pool?.length > 0)
+      };
+    });
+    assert.equal(pauseState.isPausedManually, true, 'Opening pause modal must set isPausedManually');
+    assert.equal(pauseState.physicsPaused, true, 'Opening pause modal must pause physics');
+    assert.equal(pauseState.lightingSystemActive, true, 'LightingSystem must be active in GameScene');
+    assert.equal(pauseState.floatingTextSystemActive, true, 'FloatingTextSystem must be initialized');
+
+    // Test Resume button
+    await page.click('#btn-pause-resume');
+    await page.waitForFunction(() => document.getElementById('pause-modal').classList.contains('hidden'));
+    const resumedState = await page.evaluate(() => {
+      const s = window.__HABEY_SCENE__;
+      return {
+        isPausedManually: s.isPausedManually,
+        physicsPaused: s.physics.world.isPaused
+      };
+    });
+    assert.equal(resumedState.isPausedManually, false, 'Resuming must clear isPausedManually');
+    assert.equal(resumedState.physicsPaused, false, 'Resuming must unpause physics');
+
+    // Test Pause and Return to Character Select
+    await page.click('#btn-pause-game');
+    await page.waitForFunction(() => !document.getElementById('pause-modal').classList.contains('hidden'));
+    await page.click('#btn-pause-select-char');
+    await page.waitForFunction(() => !document.getElementById('menu-screen').classList.contains('hidden'));
+    const menuVisible = await page.evaluate(() => !document.getElementById('menu-screen').classList.contains('hidden'));
+    assert.equal(menuVisible, true, 'Return to character select from pause must restore Main Menu');
+
+    // Re-start game to continue remaining checks
+    await page.click('#btn-start-game');
+    await page.waitForFunction(() => document.getElementById('menu-screen').classList.contains('hidden'));
+    console.log('✔ Check 5b: In-Game Pause Menu, Dynamic Lighting, Floating Damage Numbers, and Return to Character Select verified.');
 
     // DEEP EDGE CASE 6: All 7 Elemental Cross-Reactions, Pet Cage Rescue, 6 Chest Items & Boss Blood Curse
     const deepCombatCheck = await page.evaluate(() => {

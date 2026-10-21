@@ -27,6 +27,7 @@ export class UIManager {
 
   setGameScene(gameScene) {
     this.scene = gameScene;
+    this.gameScene = gameScene;
   }
 
   bindSaveEvents() {
@@ -102,7 +103,7 @@ export class UIManager {
       };
     }
 
-    // Game Over Restart & Menu buttons
+    // Game Over Restart, Select Character & Menu buttons
     const restartBtn = document.getElementById('btn-gameover-restart');
     if (restartBtn) {
       restartBtn.onclick = () => {
@@ -111,13 +112,154 @@ export class UIManager {
       };
     }
 
-    const toMenuBtn = document.getElementById('btn-gameover-menu');
-    if (toMenuBtn) {
-      toMenuBtn.onclick = () => {
-        a11yModalManager.close('gameover-modal');
+    const goSelectCharBtn = document.getElementById('btn-gameover-select-char');
+    if (goSelectCharBtn) {
+      goSelectCharBtn.onclick = () => {
+        a11yModalManager.closeAll();
+        const menuScreen = document.getElementById('menu-screen');
+        const hudScreen = document.getElementById('hud-screen');
+        if (menuScreen) menuScreen.classList.remove('hidden');
+        if (hudScreen) hudScreen.classList.add('hidden');
+        this.renderMainMenu();
         window.dispatchEvent(new CustomEvent('habey:return-menu'));
       };
     }
+
+    const toMenuBtn = document.getElementById('btn-gameover-menu');
+    if (toMenuBtn) {
+      toMenuBtn.onclick = () => {
+        a11yModalManager.closeAll();
+        const menuScreen = document.getElementById('menu-screen');
+        const hudScreen = document.getElementById('hud-screen');
+        if (menuScreen) menuScreen.classList.remove('hidden');
+        if (hudScreen) hudScreen.classList.add('hidden');
+        this.renderMainMenu();
+        window.dispatchEvent(new CustomEvent('habey:return-menu'));
+      };
+    }
+
+    // Pause Modal Buttons & HUD Pause Toggle
+    const pauseToggleBtn = document.getElementById('btn-pause-game');
+    if (pauseToggleBtn) {
+      pauseToggleBtn.onclick = () => {
+        this.togglePause();
+      };
+    }
+
+    // Global Escape key handler to toggle pause during active runs
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const scene = this.gameScene || this.scene || window.__HABEY_SCENE__;
+        if (scene && !scene.isGameOver && scene.scene.isActive()) {
+          const lvlModal = document.getElementById('levelup-modal');
+          if (lvlModal && !lvlModal.classList.contains('hidden')) return;
+
+          const subModalOpen = ['shop-modal', 'grimoire-modal', 'debug-modal'].some(
+            (id) => !document.getElementById(id)?.classList.contains('hidden')
+          );
+          if (subModalOpen) return;
+
+          this.togglePause();
+        }
+      }
+    });
+
+    const closePauseBtn = document.getElementById('btn-close-pause');
+    if (closePauseBtn) {
+      closePauseBtn.onclick = () => {
+        this.togglePause(false);
+      };
+    }
+
+    const pauseResumeBtn = document.getElementById('btn-pause-resume');
+    if (pauseResumeBtn) {
+      pauseResumeBtn.onclick = () => {
+        this.togglePause(false);
+      };
+    }
+
+    const pauseSelectCharBtn = document.getElementById('btn-pause-select-char');
+    if (pauseSelectCharBtn) {
+      pauseSelectCharBtn.onclick = () => {
+        saveManager.save();
+        this.togglePause(false);
+        a11yModalManager.closeAll();
+        const menuScreen = document.getElementById('menu-screen');
+        const hudScreen = document.getElementById('hud-screen');
+        if (menuScreen) menuScreen.classList.remove('hidden');
+        if (hudScreen) hudScreen.classList.add('hidden');
+        this.renderMainMenu();
+        window.dispatchEvent(new CustomEvent('habey:return-menu'));
+      };
+    }
+
+    const pauseShopBtn = document.getElementById('btn-pause-shop');
+    if (pauseShopBtn) {
+      pauseShopBtn.onclick = () => {
+        soundManager.playButtonClick();
+        this.renderTalentShop();
+        a11yModalManager.open('shop-modal', pauseShopBtn);
+      };
+    }
+
+    const pauseGrimoireBtn = document.getElementById('btn-pause-grimoire');
+    if (pauseGrimoireBtn) {
+      pauseGrimoireBtn.onclick = () => {
+        soundManager.playButtonClick();
+        this.renderGrimoire();
+        a11yModalManager.open('grimoire-modal', pauseGrimoireBtn);
+      };
+    }
+
+    const pauseRestartBtn = document.getElementById('btn-pause-restart');
+    if (pauseRestartBtn) {
+      pauseRestartBtn.onclick = () => {
+        this.togglePause(false);
+        a11yModalManager.closeAll();
+        window.dispatchEvent(new CustomEvent('habey:start-run'));
+      };
+    }
+  }
+
+  togglePause(forceState) {
+    const pauseModal = document.getElementById('pause-modal');
+    if (!pauseModal) return;
+    const isCurrentlyOpen = !pauseModal.classList.contains('hidden');
+    const shouldOpen = forceState !== undefined ? forceState : !isCurrentlyOpen;
+    const scene = this.gameScene || this.scene || window.__HABEY_SCENE__;
+
+    if (shouldOpen) {
+      if (scene && !scene.isGameOver) {
+        scene.physics.world.pause();
+        scene.isPausedManually = true;
+      }
+      this.updatePauseModalStats();
+      a11yModalManager.open(pauseModal, document.getElementById('btn-pause-game'));
+      soundManager.playButtonClick();
+    } else {
+      a11yModalManager.close(pauseModal);
+      if (scene && !scene.isGameOver && !scene.isPausedByLevelUp) {
+        scene.physics.world.resume();
+        scene.isPausedManually = false;
+      }
+      soundManager.playButtonClick();
+    }
+  }
+
+  updatePauseModalStats() {
+    const scene = this.gameScene || this.scene || window.__HABEY_SCENE__;
+    if (!scene) return;
+    const p = scene.player;
+    const charName = document.getElementById('pause-char-name');
+    const runTime = document.getElementById('pause-run-time');
+    const runKills = document.getElementById('pause-run-kills');
+    const runGold = document.getElementById('pause-run-gold');
+    const hudTimer = document.getElementById('hud-timer');
+
+    if (charName && p) charName.textContent = p.characterData?.name || 'Mago';
+    if (runTime && hudTimer) runTime.textContent = hudTimer.textContent;
+    if (runKills && p) runKills.textContent = String(p.kills || 0);
+    if (runGold) runGold.textContent = String(saveManager.getGold());
   }
 
   // ===========================================================================

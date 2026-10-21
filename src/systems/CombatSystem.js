@@ -779,11 +779,13 @@ export class CombatSystem {
       this.reactionDamageTotal += finalDamage;
     }
 
+    const incomingElem = options.element;
+
     if (!options.isDot) {
       AnimationSystem.triggerHitFlash(this.scene, enemy);
       soundManager.playHit(isCrit);
       if (enemy.sprite?.active) {
-        this.spawnDamageNumber(enemy.sprite.x, enemy.sprite.y, finalDamage, isCrit);
+        this.spawnDamageNumber(enemy.sprite.x, enemy.sprite.y, finalDamage, isCrit, incomingElem);
       }
     }
 
@@ -796,7 +798,6 @@ export class CombatSystem {
     }
 
     // Elemental Application & Cross-Reaction Check!
-    const incomingElem = options.element;
     if (incomingElem && !options.isReaction) {
       if (enemy.activeElement && (enemy.activeElement !== incomingElem || incomingElem === 'arcane')) {
         this.triggerElementalReaction(enemy, enemy.activeElement, incomingElem, finalDamage, timeMs);
@@ -1061,7 +1062,11 @@ export class CombatSystem {
     });
   }
 
-  spawnDamageNumber(x, y, amount, isCrit = false) {
+  spawnDamageNumber(x, y, amount, isCrit = false, element = null) {
+    if (this.scene.floatingTextSystem) {
+      this.scene.floatingTextSystem.spawnDamageText(x, y, amount, { isCrit, element });
+      return;
+    }
     const scatterX = (Math.random() - 0.5) * 20;
     const scatterY = (Math.random() - 0.5) * 10;
     const color = isCrit ? '#fde047' : '#ffffff';

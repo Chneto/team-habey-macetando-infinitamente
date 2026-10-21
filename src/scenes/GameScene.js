@@ -7,6 +7,8 @@ import uiManager from '../ui/UIManager.js';
 import DebugPanel from '../ui/DebugPanel.js';
 import saveManager from '../systems/SaveManager.js';
 import soundManager from '../systems/SoundManager.js';
+import LightingSystem from '../systems/LightingSystem.js';
+import FloatingTextSystem from '../systems/FloatingTextSystem.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -19,6 +21,7 @@ export class GameScene extends Phaser.Scene {
     this.isTimerLockedByBoss = false;
     this.isPausedByDebug = false;
     this.isPausedByLevelUp = false;
+    this.isPausedManually = false;
     this.isGameOver = false;
     this.pendingLevelUps = 0;
     this.enemiesFrozenUntil = 0;
@@ -65,6 +68,10 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player.sprite, true, 0.12, 0.12);
     this.cameras.main.setZoom(1.18);
 
+    // Systems & Effects
+    this.floatingTextSystem = new FloatingTextSystem(this);
+    this.lightingSystem = new LightingSystem(this);
+
     // UI & Debug Panel
     this.uiManager = uiManager;
     uiManager.setGameScene(this);
@@ -89,16 +96,17 @@ export class GameScene extends Phaser.Scene {
     };
     window.addEventListener('habey:start-run', this.onRestartBound);
     window.addEventListener('habey:return-menu', this.onReturnMenuBound);
-    this.events.once('shutdown', () => this.cleanupListeners());
-    this.events.once('destroy', () => this.cleanupListeners());
+    this.events.once('shutdown', () => this.destroySystems());
+    this.events.once('destroy', () => this.destroySystems());
   }
 
   initGroundProps() {
     this.initEmittersAndDecalPool();
+    this.torches = [];
     for (let i = 0; i < 36; i++) {
       const px = (Math.random() - 0.5) * 2000;
       const py = (Math.random() - 0.5) * 1600;
-      const kind = i % 3;
+      const kind = i % 4;
       let node;
       if (kind === 0) {
         // Ancient arcane floor rune with glowing border
@@ -106,9 +114,13 @@ export class GameScene extends Phaser.Scene {
       } else if (kind === 1) {
         // Glowing magma/void fissure
         node = this.add.rectangle(px, py, 42, 3.5, 0xf97316, 0.38).setRotation((i * 0.65) % Math.PI);
-      } else {
+      } else if (kind === 2) {
         // Arcane luminous vegetation/crystal cluster
         node = this.add.circle(px, py, 7, 0x10b981, 0.28).setStrokeStyle(1.2, 0x34d399, 0.45);
+      } else {
+        // Mystical torch brazier on dungeon floor
+        node = this.add.circle(px, py, 5.5, 0xf59e0b, 0.9).setStrokeStyle(1.5, 0xfef08a, 0.95);
+        this.torches.push({ x: px, y: py, node, seed: Math.random() * 10 });
       }
       node.setDepth(1);
       this.groundProps.push(node);
@@ -166,6 +178,15 @@ export class GameScene extends Phaser.Scene {
       else if (dx > 1100) prop.x -= 2200;
       if (dy < -900) prop.y += 1800;
       else if (dy > 900) prop.y -= 1800;
+    }
+
+    if (this.torches) {
+      for (const t of this.torches) {
+        if (t.node) {
+          t.x = t.node.x;
+          t.y = t.node.y;
+        }
+      }
     }
 
     // Persistent Emitter Position Sync (Zero allocations per frame)
@@ -227,6 +248,18 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  destroySystems() {
+    this.cleanupListeners();
+    if (this.lightingSystem) {
+      this.lightingSystem.destroy();
+      this.lightingSystem = null;
+    }
+    if (this.floatingTextSystem) {
+      this.floatingTextSystem.destroy();
+      this.floatingTextSystem = null;
+    }
+  }
+
   setupInputs() {
     this.cleanupListeners();
 
@@ -237,11 +270,16 @@ export class GameScene extends Phaser.Scene {
       S: Phaser.Input.Keyboard.KeyCodes.S,
       D: Phaser.Input.Keyboard.KeyCodes.D,
       SPACE: Phaser.Input.Keyboard.KeyCodes.SPACE,
-      P: Phaser.Input.Keyboard.KeyCodes.P
+      P: Phaser.Input.Keyboard.KeyCodes.P,
+      ESC: Phaser.Input.Keyboard.KeyCodes.ESC
     });
 
     this.keys.P.on('down', () => {
       this.debugPanel.toggle();
+    });
+
+    this.keys.ESC.on('down', () => {
+      uiManager.togglePause();
     });
 
     this.keys.SPACE.on('down', () => {
@@ -386,7 +424,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time, deltaMs) {
-    if (this.isPausedByDebug || this.isPausedByLevelUp || this.isGameOver) return;
+    if (this.isPausedByDebug || this.isPausedByLevelUp || this.isGameOver || this.isPausedManually) return;
 
     const now = performance.now();
     const clampedDelta = Math.min(deltaMs, 64);
@@ -408,6 +446,8 @@ export class GameScene extends Phaser.Scene {
     this.spawnSystem.update(now, clampedDelta, this.player, this.runSeconds);
     this.combatSystem.update(now, clampedDelta, this.player);
     this.gemManager.update(now, clampedDelta, this.player);
+    this.floatingTextSystem?.update(clampedDelta);
+    this.lightingSystem?.update(now, this.player, this.combatSystem.playerProjectiles, this.torches);
 
     this.hudTickTimer += clampedDelta;
     if (this.hudTickTimer >= 120) {
