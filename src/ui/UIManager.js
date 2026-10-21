@@ -131,7 +131,7 @@ export class UIManager {
       card.innerHTML = `
         <div class="char-card-header">
           <div class="char-avatar" style="border-color: ${char.hexColor}">
-            <div class="char-sprite-preview" style="background-image: url('assets/sprites/${char.spriteKey}.png')"></div>
+            <div class="char-sprite-preview" style="background-image: url('assets/sprites/${char.spriteKey}_hd.png'), url('assets/sprites/${char.spriteKey}.png')"></div>
             <span class="char-icon char-icon-badge">${char.icon}</span>
             ${char.hasFourArms ? '<span class="four-arms-badge" title="4 Braços Articulados">4 BRAÇOS</span>' : ''}
           </div>
@@ -283,7 +283,7 @@ export class UIManager {
         (m) => `
         <div class="grimoire-item bestiary-item">
           <div class="bestiary-header">
-            <div class="bestiary-sprite" style="background-image: url('assets/sprites/${m.spriteKey || 'boss_archon'}.png')"></div>
+            <div class="bestiary-sprite" style="background-image: url('assets/sprites/${m.spriteKey || 'boss_archon'}_hd.png'), url('assets/sprites/${m.spriteKey || 'boss_archon'}.png')"></div>
             <div>
               <div class="grimoire-item-title"><strong>${m.name}</strong> <span class="badge-free-slot">${m.roleLabel || 'Chefe Arcano'}</span></div>
               <p>${m.visualTrait || 'Entidade abissal corrompida pelo éter.'}</p>

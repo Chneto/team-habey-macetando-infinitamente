@@ -44,6 +44,14 @@ export class AssetManager {
     scene.load.image('treasure_chest', 'assets/sprites/treasure_chest.png');
     scene.load.image('pet_cage', 'assets/sprites/pet_cage.png');
     scene.load.image('arcane_floor', 'assets/sprites/arcane_floor.png');
+
+    // Preload Bespoke FLUX HD Assets (Graceful fallback if not yet generated)
+    for (const char of CHARACTERS_DATA) {
+      scene.load.image(`${char.spriteKey}_hd`, `assets/sprites/${char.spriteKey}_hd.png`);
+    }
+    for (const bossKey of bossKeys) {
+      scene.load.image(`${bossKey}_hd`, `assets/sprites/${bossKey}_hd.png`);
+    }
   }
 
   static ensureAllAssets(scene) {
