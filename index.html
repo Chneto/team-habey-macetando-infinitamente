@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=MedievalSharp&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="./assets/index-3JxjeP2S.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-XHOgwaCP.css">
+  <script type="module" crossorigin src="./assets/index-DGd18jFx.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CTloWwNy.css">
 </head>
 <body>
   <!-- Phaser 3 WebGL Canvas Container -->
@@ -97,6 +97,7 @@
             <span>✨ VFX: <strong id="vfx-opacity-value">100%</strong></span>
             <input id="vfx-opacity-slider" type="range" min="20" max="100" value="100" />
           </label>
+          <button id="btn-pause-game" class="btn-pause-toggle" title="Pausar Partida (Esc)">⏸️ PAUSA (ESC)</button>
           <button id="btn-open-debug" class="btn-dev-toggle" title="Atalho: Tecla P">⚙️ DEV (P)</button>
         </div>
       </div>
@@ -155,6 +156,53 @@
       </div>
     </div>
 
+    <!-- PAUSE & NAVIGATION MENU MODAL -->
+    <div id="pause-modal" class="modal-backdrop hidden interactive" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="pause-modal-title">
+      <div class="modal-window modal-pause">
+        <div class="modal-header">
+          <h2 id="pause-modal-title">⚔️ JOGO PAUSADO</h2>
+          <button id="btn-close-pause" class="btn-close" aria-label="Continuar Partida">✕</button>
+        </div>
+        
+        <div class="pause-run-summary">
+          <div class="pause-stat-card">
+            <span class="pause-stat-label">🧙‍♂️ Mago</span>
+            <strong id="pause-char-name">Petrus</strong>
+          </div>
+          <div class="pause-stat-card">
+            <span class="pause-stat-label">⏱️ Tempo</span>
+            <strong id="pause-run-time">00:00</strong>
+          </div>
+          <div class="pause-stat-card">
+            <span class="pause-stat-label">💀 Inimigos</span>
+            <strong id="pause-run-kills">0</strong>
+          </div>
+          <div class="pause-stat-card">
+            <span class="pause-stat-label">💰 Ouro Salvo</span>
+            <strong id="pause-run-gold">0</strong>
+          </div>
+        </div>
+
+        <div class="pause-actions-list">
+          <button id="btn-pause-resume" class="btn-primary-glow btn-pause-action">
+            ⚔️ Continuar Batalha (Esc)
+          </button>
+          <button id="btn-pause-select-char" class="btn-arcane-gold btn-pause-action">
+            🧙‍♂️ Trocar de Mago (Salvar Ouro & Voltar ao Menu)
+          </button>
+          <button id="btn-pause-shop" class="btn-arcane btn-pause-action">
+            🏛️ Loja de Talentos & Clonagem
+          </button>
+          <button id="btn-pause-grimoire" class="btn-arcane btn-pause-action">
+            📖 Grimório Arcano & Sinergias
+          </button>
+          <button id="btn-pause-restart" class="btn-arcane btn-pause-action">
+            🔄 Reiniciar Partida Atual
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- DEVELOPER / GOD MODE PANEL (KEY 'P' OR '⚙️ DEV' BUTTON — 11 BUTTONS) -->
     <div id="debug-modal" class="modal-backdrop hidden interactive" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="debug-modal-title">
       <div class="modal-window debug-window">
@@ -200,6 +248,7 @@
         </div>
         <div class="gameover-actions">
           <button id="btn-gameover-restart" class="btn-primary-glow">🔄 JOGAR NOVAMENTE</button>
+          <button id="btn-gameover-select-char" class="btn-arcane-gold">🧙‍♂️ ESCOLHER OUTRO MAGO</button>
           <button id="btn-gameover-menu" class="btn-arcane">🏠 VOLTAR AO MENU</button>
         </div>
       </div>
