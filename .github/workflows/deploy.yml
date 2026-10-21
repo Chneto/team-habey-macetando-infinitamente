@@ -1,7 +1,11 @@
-name: Deploy Game to GitHub Pages
+name: Deploy Game to GitHub Pages & CI Quality Gates
 
 on:
   push:
+    branches:
+      - main
+      - master
+  pull_request:
     branches:
       - main
       - master
@@ -17,7 +21,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  quality-check-and-deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -35,17 +39,26 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Quality Gate 1 - Code Quality & Static Linting
+        run: npm run lint
+
+      - name: Quality Gate 2 - Mathematical & Balance Simulation
+        run: npm run balance
+
       - name: Build static production bundle
         run: npm run build
 
       - name: Setup Pages
+        if: github.event_name == 'push'
         uses: actions/configure-pages@v5
 
       - name: Upload artifact
+        if: github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
           path: './dist'
 
       - name: Deploy to GitHub Pages
+        if: github.event_name == 'push'
         id: deployment
         uses: actions/deploy-pages@v4

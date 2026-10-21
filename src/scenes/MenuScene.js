@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import uiManager from '../ui/UIManager.js';
 import saveManager from '../systems/SaveManager.js';
 import soundManager from '../systems/SoundManager.js';
+import a11yModalManager from '../ui/A11yModalManager.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -39,13 +40,13 @@ export class MenuScene extends Phaser.Scene {
       openShopBtn.onclick = () => {
         soundManager.playButtonClick();
         uiManager.renderTalentShop();
-        shopModal.classList.remove('hidden');
+        a11yModalManager.open(shopModal, openShopBtn);
       };
     }
     if (closeShopBtn && shopModal) {
       closeShopBtn.onclick = () => {
         soundManager.playButtonClick();
-        shopModal.classList.add('hidden');
+        a11yModalManager.close(shopModal);
       };
     }
 
@@ -56,13 +57,13 @@ export class MenuScene extends Phaser.Scene {
       openGrimoireBtn.onclick = () => {
         soundManager.playButtonClick();
         uiManager.renderGrimoire();
-        grimoireModal.classList.remove('hidden');
+        a11yModalManager.open(grimoireModal, openGrimoireBtn);
       };
     }
     if (closeGrimoireBtn && grimoireModal) {
       closeGrimoireBtn.onclick = () => {
         soundManager.playButtonClick();
-        grimoireModal.classList.add('hidden');
+        a11yModalManager.close(grimoireModal);
       };
     }
 

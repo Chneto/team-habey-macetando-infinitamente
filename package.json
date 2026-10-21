@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview --port 4173",
     "sprites": "node tools/process_sprites.mjs",
+    "flux:generate": "python tools/flux_client.py",
     "balance": "node tools/validate_balance.mjs",
     "lint": "eslint src/",
     "qa": "node tools/qa_runner.mjs"

@@ -3,6 +3,7 @@ import {
   DUAL_FUSIONS
 } from '../config/skillsData.js';
 import saveManager from '../systems/SaveManager.js';
+import a11yModalManager from './A11yModalManager.js';
 
 export class DebugPanel {
   constructor(gameScene) {
@@ -177,14 +178,14 @@ export class DebugPanel {
     this.scene.physics.pause();
     this.scene.isPausedByDebug = true;
     this.refreshLabels();
-    this.modalEl.classList.remove('hidden');
+    a11yModalManager.open(this.modalEl, document.getElementById('btn-open-debug'));
   }
 
   close() {
     if (!this.modalEl) return;
     this.isOpen = false;
     this.scene.isPausedByDebug = false;
-    this.modalEl.classList.add('hidden');
+    a11yModalManager.close(this.modalEl);
     if (!this.scene.isPausedByLevelUp && !this.scene.isGameOver) {
       this.scene.physics.resume();
     }

@@ -131,9 +131,12 @@ export const ACHIEVEMENTS_DATA = [
   }
 ];
 
+const CURRENT_SAVE_VERSION = 2;
+const CORRUPT_BACKUP_KEY = 'habey_elemental_save_corrupt_backup';
+
 function createDefaultSave() {
   return {
-    version: 1,
+    version: CURRENT_SAVE_VERSION,
     gold: 250,
     selectedCharacterId: 'petrus',
     unlockedCharacters: ['petrus'],
@@ -163,6 +166,76 @@ function createDefaultSave() {
   };
 }
 
+function migrateAndValidateSave(rawObj) {
+  const def = createDefaultSave();
+  if (!rawObj || typeof rawObj !== 'object') {
+    return def;
+  }
+
+  // Version migrations
+  const currentVersion = Number(rawObj.version) || 1;
+  let migrated = { ...rawObj };
+
+  if (currentVersion < 2) {
+    migrated.version = 2;
+    migrated.settings = { ...def.settings, ...(migrated.settings || {}) };
+  }
+
+  // Sanitize and validate fields
+  const gold = Math.max(0, Math.floor(Number(migrated.gold) || 0));
+  const validCharIds = new Set(CHARACTERS_DATA.map((c) => c.id));
+  const unlocked = Array.isArray(migrated.unlockedCharacters)
+    ? migrated.unlockedCharacters.filter((id) => validCharIds.has(id))
+    : ['petrus'];
+  if (!unlocked.includes('petrus')) unlocked.unshift('petrus');
+
+  const selected = validCharIds.has(migrated.selectedCharacterId) && unlocked.includes(migrated.selectedCharacterId)
+    ? migrated.selectedCharacterId
+    : 'petrus';
+
+  const talents = { ...def.talents };
+  if (migrated.talents && typeof migrated.talents === 'object') {
+    for (const k of Object.keys(def.talents)) {
+      const v = Number(migrated.talents[k]);
+      talents[k] = Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0;
+    }
+  }
+
+  const stats = { ...def.stats };
+  if (migrated.stats && typeof migrated.stats === 'object') {
+    for (const k of Object.keys(def.stats)) {
+      const v = Number(migrated.stats[k]);
+      stats[k] = Number.isFinite(v) && v >= 0 ? Math.floor(v) : def.stats[k];
+    }
+  }
+
+  const grimoireDiscovered = Array.isArray(migrated.grimoireDiscovered)
+    ? Array.from(new Set(migrated.grimoireDiscovered.filter((s) => typeof s === 'string')))
+    : def.grimoireDiscovered;
+
+  const achievements = Array.isArray(migrated.achievements)
+    ? Array.from(new Set(migrated.achievements.filter((s) => typeof s === 'string')))
+    : [];
+
+  const settings = {
+    vfxOpacity: typeof migrated.settings?.vfxOpacity === 'number' ? Math.max(0.1, Math.min(1.0, migrated.settings.vfxOpacity)) : 1.0,
+    muted: Boolean(migrated.settings?.muted)
+  };
+
+  return {
+    version: CURRENT_SAVE_VERSION,
+    gold,
+    selectedCharacterId: selected,
+    unlockedCharacters: unlocked,
+    talents,
+    grimoireDiscovered,
+    achievements,
+    stats,
+    settings,
+    lastUpdated: Date.now()
+  };
+}
+
 class SaveManager {
   constructor() {
     this.data = this.load();
@@ -170,44 +243,96 @@ class SaveManager {
   }
 
   load() {
+    let raw = null;
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      if (typeof localStorage === 'undefined') {
+        return createDefaultSave();
+      }
+      raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) {
         const def = createDefaultSave();
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(def));
+        this.persistRaw(JSON.stringify(def));
         return def;
       }
       const parsed = JSON.parse(raw);
+      const validated = migrateAndValidateSave(parsed);
+      this.persistRaw(JSON.stringify(validated));
+      return validated;
+    } catch (err) {
+      console.warn('[SaveManager] Corrupted save detected. Preserving backup before recovery:', err);
+      if (raw && typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem(`${CORRUPT_BACKUP_KEY}_${Date.now()}`, raw);
+        } catch (_bErr) {}
+      }
       const def = createDefaultSave();
-      return {
-        ...def,
-        ...parsed,
-        talents: { ...def.talents, ...(parsed.talents || {}) },
-        stats: { ...def.stats, ...(parsed.stats || {}) },
-        settings: { ...def.settings, ...(parsed.settings || {}) }
-      };
-    } catch (_err) {
-      return createDefaultSave();
+      this.persistRaw(JSON.stringify(def));
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(
+          new CustomEvent('habey:save-recovered', {
+            detail: { message: 'Dados salvos anteriores corrompidos foram restaurados com segurança para o padrão.' }
+          })
+        );
+      }
+      return def;
+    }
+  }
+
+  persistRaw(jsonString) {
+    if (typeof localStorage === 'undefined') return true;
+    try {
+      localStorage.setItem(STORAGE_KEY, jsonString);
+      return true;
+    } catch (err) {
+      console.error('[SaveManager] Failed to write localStorage:', err);
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(
+          new CustomEvent('habey:save-failed', {
+            detail: {
+              error: err.name || 'StorageError',
+              message: 'Armazenamento local cheio ou indisponível. Progresso não gravado no disco!'
+            }
+          })
+        );
+      }
+      return false;
     }
   }
 
   save() {
     this.data.lastUpdated = Date.now();
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
-    } catch (_err) {
-      // Ignore quota errors in restricted environments
-    }
+    const serialized = JSON.stringify(this.data);
+    const success = this.persistRaw(serialized);
     this.syncWithFirebase();
-    window.dispatchEvent(new CustomEvent('habey:save-updated', { detail: this.data }));
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(
+        new CustomEvent('habey:save-updated', {
+          detail: { ...this.data, isPersisted: success }
+        })
+      );
+    }
+    return success;
   }
 
   async syncWithFirebase() {
-    if (!window.FIREBASE_CONFIG || !window.FIREBASE_SYNC_URL) return false;
+    if (typeof window === 'undefined' || !window.FIREBASE_CONFIG || !window.FIREBASE_SYNC_URL) return false;
     try {
-      this.firebaseConnected = true;
-      return true;
+      const response = await window.fetch(window.FIREBASE_SYNC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: this.data.userId || 'anonymous_mage',
+          saveData: this.data,
+          timestamp: Date.now()
+        })
+      });
+      if (response.ok) {
+        this.firebaseConnected = true;
+        return true;
+      }
+      return false;
     } catch (_err) {
+      this.firebaseConnected = false;
       return false;
     }
   }

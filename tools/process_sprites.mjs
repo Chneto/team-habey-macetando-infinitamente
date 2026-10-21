@@ -7,8 +7,15 @@ import {
   PETS_DATA
 } from '../src/config/enemiesData.js';
 
-const OUT_DIR = path.resolve(process.cwd(), 'assets/sprites');
-fs.mkdirSync(OUT_DIR, { recursive: true });
+const CANONICAL_OUT_DIR = path.resolve(process.cwd(), 'public/assets/sprites');
+const ROOT_OUT_DIR = path.resolve(process.cwd(), 'assets/sprites');
+fs.mkdirSync(CANONICAL_OUT_DIR, { recursive: true });
+fs.mkdirSync(ROOT_OUT_DIR, { recursive: true });
+
+function writeSpriteFile(filename, buffer) {
+  fs.writeFileSync(path.join(CANONICAL_OUT_DIR, filename), buffer);
+  fs.writeFileSync(path.join(ROOT_OUT_DIR, filename), buffer);
+}
 
 // CRC32 Table for PNG chunk encoding
 const crcTable = new Uint32Array(256);
@@ -1065,9 +1072,7 @@ function drawBossSheet(key, config) {
 
 function saveSpriteAsset(key, width, height, frameWidth, frameHeight, frames, rgba, hitbox) {
   const pngBuffer = encodeRGBAtoPNG(width, height, rgba);
-  const pngPath = path.join(OUT_DIR, `${key}.png`);
-  const jsonPath = path.join(OUT_DIR, `${key}.json`);
-  fs.writeFileSync(pngPath, pngBuffer);
+  writeSpriteFile(`${key}.png`, pngBuffer);
 
   const meta = {
     key,
@@ -1093,7 +1098,8 @@ function saveSpriteAsset(key, width, height, frameWidth, frameHeight, frames, rg
         offsetY: Math.round(frameHeight * 0.2)
       }
   };
-  fs.writeFileSync(jsonPath, JSON.stringify(meta, null, 2));
+  const jsonBuffer = Buffer.from(JSON.stringify(meta, null, 2), 'utf-8');
+  writeSpriteFile(`${key}.json`, jsonBuffer);
 }
 
 console.log('=== [nano-banana-sprite-forge] Generating & Chroma-Keying Bespoke HD 4-Frame Sprite Sheets ===');
@@ -1308,5 +1314,5 @@ drawBossSheet('boss_kryos', {
   saveSpriteAsset('arcane_floor', w, h, w, h, 1, rgba);
 }
 
-console.log(`✔ Generated and chroma-keyed all bespoke HD sprite sheets & metadata into ${OUT_DIR}`);
+console.log(`✔ Generated and chroma-keyed all bespoke HD sprite sheets & metadata into ${CANONICAL_OUT_DIR} and ${ROOT_OUT_DIR}`);
 

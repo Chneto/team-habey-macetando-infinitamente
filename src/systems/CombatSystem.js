@@ -1,7 +1,8 @@
-import { ELEMENTS, resolveElementalReaction } from '../config/elementsData.js';
+import { ELEMENTS } from '../config/elementsData.js';
 import AnimationSystem from './AnimationSystem.js';
 import saveManager from './SaveManager.js';
 import soundManager from './SoundManager.js';
+import ElementalReactionMatrix from './combat/ElementalReactionMatrix.js';
 
 export class CombatSystem {
   constructor(scene) {
@@ -821,105 +822,14 @@ export class CombatSystem {
   }
 
   triggerElementalReaction(enemy, firstElem, secondElem, baseHitDamage, timeMs) {
-    const reaction = resolveElementalReaction(firstElem, secondElem);
-    if (!reaction || !enemy.sprite?.active) return;
-
-    const ex = enemy.sprite.x;
-    const ey = enemy.sprite.y;
-    const player = this.scene.player;
-
-    // Alchemius Innate Passive: Catalisador Químico (+45% reaction damage & spread)
-    const alchemiusMult = player?.characterData.id === 'alchemius' ? 1.45 : 1.0;
-    const reactionDmg = Math.max(8, Math.round(baseHitDamage * reaction.damageMult * alchemiusMult));
-
-    soundManager.playReaction();
-    this.spawnFloatingText(ex, ey - 26, `${reaction.name}!`, reaction.hex);
-
-    // Clear consumed status unless reaction spreads/persists
-    enemy.activeElement = null;
-
-    switch (reaction.id) {
-      case 'magma_eruption': {
-        this.spawnGroundZone({
-          x: ex,
-          y: ey,
-          radius: reaction.radius,
-          duration: reaction.duration,
-          tickInterval: 500,
-          damagePerTick: Math.round(reactionDmg * 0.45),
-          element: 'fire',
-          color: reaction.color,
-          slowPct: 0.40
-        });
-        break;
-      }
-
-      case 'rock_shatter': {
-        this.damageEnemiesInRadius(ex, ey, reaction.radius, reactionDmg, {
-          guaranteedCrit: true,
-          knockback: 260,
-          isReaction: true
-        });
-        break;
-      }
-
-      case 'thermal_shock': {
-        enemy.armorReduction = Math.max(enemy.armorReduction, 0.30);
-        this.triggerAoEExplosion(ex, ey, reaction.radius, reactionDmg, null, {
-          isReaction: true,
-          color: reaction.color
-        });
-        break;
-      }
-
-      case 'toxic_combustion': {
-        this.triggerAoEExplosion(ex, ey, reaction.radius, reactionDmg, 'poison', {
-          isReaction: true,
-          color: reaction.color
-        });
-        break;
-      }
-
-      case 'superconductor': {
-        this.castChainLightning(ex, ey, 1, reactionDmg, reaction.chainTargets, null, null);
-        // Reduce active player cooldowns by 0.5s (500ms)
-        if (player) {
-          for (const slot of player.activeSkills.values()) {
-            slot.cooldownTimer = Math.max(0, slot.cooldownTimer - reaction.cooldownReductionMs);
-          }
-        }
-        break;
-      }
-
-      case 'elemental_whirlwind': {
-        const effRadius = Math.round(reaction.radius * 1.5);
-        this.pullEnemiesToward(ex, ey, effRadius, 95);
-        this.triggerAoEExplosion(ex, ey, effRadius, reactionDmg, reaction.combinedWith, {
-          isReaction: true,
-          color: reaction.color
-        });
-        break;
-      }
-
-      case 'dimensional_rupture': {
-        enemy.vulnerabilityBonus = Math.max(enemy.vulnerabilityBonus, 0.25);
-        this.dealDamageToEnemy(enemy, reactionDmg, { isReaction: true, timeMs });
-        break;
-      }
-    }
-
-    // Alchemius spreads residual element to nearby enemies
-    if (player?.characterData.id === 'alchemius') {
-      const enemies = this.scene.spawnSystem?.enemies || [];
-      for (const other of enemies) {
-        if (other !== enemy && !other.isDead && other.sprite?.active) {
-          const d = Math.hypot(other.sprite.x - ex, other.sprite.y - ey);
-          if (d <= 140) {
-            other.applyElementStatus(secondElem, timeMs);
-          }
-        }
-      }
-    }
+    return ElementalReactionMatrix.trigger({
+      combatSystem: this,
+      enemy,
+      firstElem,
+      secondElem,
+      baseHitDamage,
+      timeMs
+    });
   }
 
   handleEnemyDeath(enemy, _timeMs) {

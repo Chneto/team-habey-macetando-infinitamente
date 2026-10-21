@@ -12,6 +12,7 @@ import { ELEMENTAL_REACTIONS } from '../config/elementsData.js';
 import { ENEMY_TYPES, MINI_BOSS_TEMPLATES, MAIN_BOSS_TEMPLATES } from '../config/enemiesData.js';
 import saveManager, { TALENT_SHOP_ITEMS, ACHIEVEMENTS_DATA } from '../systems/SaveManager.js';
 import soundManager from '../systems/SoundManager.js';
+import a11yModalManager from './A11yModalManager.js';
 
 export class UIManager {
   constructor(gameScene = null) {
@@ -71,7 +72,7 @@ export class UIManager {
     const restartBtn = document.getElementById('btn-gameover-restart');
     if (restartBtn) {
       restartBtn.onclick = () => {
-        document.getElementById('gameover-modal')?.classList.add('hidden');
+        a11yModalManager.close('gameover-modal');
         window.dispatchEvent(new CustomEvent('habey:start-run'));
       };
     }
@@ -79,7 +80,7 @@ export class UIManager {
     const toMenuBtn = document.getElementById('btn-gameover-menu');
     if (toMenuBtn) {
       toMenuBtn.onclick = () => {
-        document.getElementById('gameover-modal')?.classList.add('hidden');
+        a11yModalManager.close('gameover-modal');
         window.dispatchEvent(new CustomEvent('habey:return-menu'));
       };
     }
@@ -539,12 +540,12 @@ export class UIManager {
 
     this.banishMode = false;
     this.generateAndRenderLevelUpCards();
-    modal.classList.remove('hidden');
+    a11yModalManager.open(modal);
   }
 
   closeLevelUpModal() {
     const modal = document.getElementById('levelup-modal');
-    if (modal) modal.classList.add('hidden');
+    if (modal) a11yModalManager.close(modal);
     this.scene?.onLevelUpChoiceCompleted();
   }
 
@@ -822,7 +823,7 @@ export class UIManager {
     }
 
     soundManager.playBossSpawn();
-    modal.classList.remove('hidden');
+    a11yModalManager.open(modal);
   }
 }
 

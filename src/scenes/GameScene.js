@@ -94,6 +94,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   initGroundProps() {
+    this.initEmittersAndDecalPool();
     for (let i = 0; i < 36; i++) {
       const px = (Math.random() - 0.5) * 2000;
       const py = (Math.random() - 0.5) * 1600;
@@ -114,7 +115,48 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  updateGroundPropsAndWeather(deltaMs) {
+  initEmittersAndDecalPool() {
+    // 1. Pre-allocated Decal Pool to eliminate dynamic GameObject churn
+    this.decalPool = [];
+    this.decalPoolIndex = 0;
+    for (let i = 0; i < 32; i++) {
+      const d = this.add.ellipse(-9999, -9999, 28, 20, 0x450a0a, 0).setDepth(2);
+      this.decalPool.push(d);
+    }
+
+    // 2. Persistent GPU Particle Emitters for zero Garbage Collection (GC) pauses
+    if (this.add.particles) {
+      try {
+        this.ambientMoteEmitter = this.add.particles(0, 0, 'particle_spark', {
+          speed: { min: 10, max: 25 },
+          angle: { min: 250, max: 290 },
+          scale: { start: 0.45, end: 0.1 },
+          alpha: { start: 0.35, end: 0 },
+          lifespan: { min: 1400, max: 2200 },
+          frequency: 240,
+          tint: [0x8b5cf6, 0x38bdf8],
+          emitting: true,
+          depth: 18
+        });
+
+        this.bossAtmosphereEmitter = this.add.particles(0, 0, 'particle_spark', {
+          speedY: { min: 380, max: 620 },
+          speedX: { min: -80, max: -30 },
+          scale: { start: 0.65, end: 0.1 },
+          alpha: { start: 0.55, end: 0 },
+          lifespan: 900,
+          frequency: 160,
+          tint: 0xef4444,
+          emitting: false,
+          depth: 19
+        });
+      } catch (e) {
+        console.warn('[GameScene] GPU Particle Emitter fallback enabled:', e);
+      }
+    }
+  }
+
+  updateGroundPropsAndWeather(_deltaMs) {
     const px = this.player.sprite.x;
     const py = this.player.sprite.y;
     for (const prop of this.groundProps) {
@@ -126,56 +168,42 @@ export class GameScene extends Phaser.Scene {
       else if (dy > 900) prop.y -= 1800;
     }
 
-    // Ambient floating magical motes drifting across the battlefield
-    if (Math.random() < 0.22) {
-      const mx = px + (Math.random() - 0.5) * 1100;
-      const my = py + (Math.random() - 0.5) * 850;
-      const mote = this.add
-        .image(mx, my, 'particle_spark')
-        .setDepth(18)
-        .setTint(Math.random() < 0.5 ? 0x8b5cf6 : 0x38bdf8)
-        .setAlpha(0.35)
-        .setScale(0.45);
-      this.tweens.add({
-        targets: mote,
-        x: mx + (Math.random() - 0.5) * 60,
-        y: my - 45 - Math.random() * 30,
-        alpha: 0,
-        duration: 1600 + Math.random() * 800,
-        onComplete: () => mote.destroy()
-      });
+    // Persistent Emitter Position Sync (Zero allocations per frame)
+    if (this.ambientMoteEmitter) {
+      this.ambientMoteEmitter.setPosition(
+        px + (Math.random() - 0.5) * 800,
+        py + (Math.random() - 0.5) * 600
+      );
     }
 
-    if (this.bossAtmosphereActive && Math.random() < 0.35) {
-      const wx = px + (Math.random() - 0.5) * 980;
-      const wy = py - 380;
-      const spark = this.add
-        .image(wx, wy, 'particle_spark')
-        .setDepth(19)
-        .setTint(this.isTimerLockedByBoss ? 0xef4444 : 0xf97316)
-        .setAlpha(0.55)
-        .setScale(0.65);
-      this.tweens.add({
-        targets: spark,
-        x: wx - 90,
-        y: wy + 720,
-        alpha: 0,
-        duration: 950 + deltaMs,
-        onComplete: () => spark.destroy()
-      });
+    if (this.bossAtmosphereEmitter) {
+      this.bossAtmosphereEmitter.setPosition(px + (Math.random() - 0.5) * 700, py - 360);
+      this.bossAtmosphereEmitter.emitting = Boolean(this.bossAtmosphereActive);
+      if (this.isTimerLockedByBoss) {
+        this.bossAtmosphereEmitter.setParticleTint(0xef4444);
+      } else {
+        this.bossAtmosphereEmitter.setParticleTint(0xf97316);
+      }
     }
   }
 
   spawnGroundDecal(x, y, tint = 0x450a0a) {
-    if (!this.add) return;
+    if (!this.decalPool || this.decalPool.length === 0) return;
+    const decal = this.decalPool[this.decalPoolIndex];
+    this.decalPoolIndex = (this.decalPoolIndex + 1) % this.decalPool.length;
+
+    this.tweens.killTweensOf(decal);
     const radius = 14 + Math.random() * 12;
-    const decal = this.add.ellipse(x, y, radius * 1.4, radius, tint, 0.32).setDepth(2);
+    decal.setPosition(x, y);
+    decal.setSize(radius * 1.4, radius);
+    decal.setFillStyle(tint, 0.32);
+    decal.setAlpha(0.32);
+
     this.tweens.add({
       targets: decal,
       alpha: 0,
-      duration: 5500 + Math.random() * 2000,
-      ease: 'Linear',
-      onComplete: () => decal.destroy()
+      duration: 5000 + Math.random() * 1500,
+      ease: 'Linear'
     });
   }
 

@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Team Habey: Macetando Infinitamente — Action Roguelike Elemental</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>⚡</text></svg>" />
   <!-- Google Fonts: Cinzel & MedievalSharp for Arcane High-Fantasy Presence -->
@@ -44,23 +44,23 @@
     </section>
 
     <!-- TALENT SHOP MODAL -->
-    <div id="shop-modal" class="modal-backdrop hidden interactive">
+    <div id="shop-modal" class="modal-backdrop hidden interactive" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="shop-modal-title">
       <div class="modal-window modal-large">
         <div class="modal-header">
-          <h2>🏛️ Loja de Talentos Permanentes & Clonagem Elemental</h2>
+          <h2 id="shop-modal-title">🏛️ Loja de Talentos Permanentes & Clonagem Elemental</h2>
           <div class="gold-pill">💰 <strong class="menu-gold-amount">250</strong></div>
-          <button id="btn-close-shop" class="btn-close">✕</button>
+          <button id="btn-close-shop" class="btn-close" aria-label="Fechar Loja de Talentos">✕</button>
         </div>
         <div id="talent-shop-list" class="talent-grid"></div>
       </div>
     </div>
 
     <!-- INTERACTIVE GRIMOIRE & ACHIEVEMENTS MODAL -->
-    <div id="grimoire-modal" class="modal-backdrop hidden interactive">
+    <div id="grimoire-modal" class="modal-backdrop hidden interactive" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="grimoire-modal-title">
       <div class="modal-window modal-large">
         <div class="modal-header">
-          <h2>📖 Grimório Arcano: Evoluções (★), Fusões (★★) e Reações</h2>
-          <button id="btn-close-grimoire" class="btn-close">✕</button>
+          <h2 id="grimoire-modal-title">📖 Grimório Arcano: Evoluções (★), Fusões (★★) e Reações</h2>
+          <button id="btn-close-grimoire" class="btn-close" aria-label="Fechar Grimório Arcano">✕</button>
         </div>
         <div id="grimoire-content" class="grimoire-scroll"></div>
       </div>
@@ -138,27 +138,27 @@
     </section>
 
     <!-- LEVEL UP MODAL (RARITY FRAMES + SYNERGY HINTS + REROLL / BANISH / SKIP) -->
-    <div id="levelup-modal" class="modal-backdrop hidden interactive">
+    <div id="levelup-modal" class="modal-backdrop hidden interactive" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="levelup-modal-title">
       <div class="modal-window levelup-window">
         <div class="levelup-header">
-          <h2>⚡ ASCENSÃO ELEMENTAL — ESCOLHA SEU PODER</h2>
+          <h2 id="levelup-modal-title">⚡ ASCENSÃO ELEMENTAL — ESCOLHA SEU PODER</h2>
           <p>Evoluções (Ativa+Passiva Nv.5) liberam 1 Slot Passivo • Fusões (Ativa+Ativa Nv.5) liberam 1 Slot Ativo!</p>
         </div>
         <div id="levelup-cards-container" class="levelup-cards-row"></div>
         <div class="levelup-actions-row">
-          <button id="btn-lvl-reroll" class="btn-arcane">🎲 Reroll (2)</button>
-          <button id="btn-lvl-banish" class="btn-arcane">🚫 Banir (2)</button>
-          <button id="btn-lvl-skip" class="btn-arcane">⏭️ Pular (+50% XP)</button>
+          <button id="btn-lvl-reroll" class="btn-arcane" aria-label="Rolar novas cartas de poder">🎲 Reroll (2)</button>
+          <button id="btn-lvl-banish" class="btn-arcane" aria-label="Banir habilidade">🚫 Banir (2)</button>
+          <button id="btn-lvl-skip" class="btn-arcane" aria-label="Pular ascensão e ganhar experiência">⏭️ Pular (+50% XP)</button>
         </div>
       </div>
     </div>
 
     <!-- DEVELOPER / GOD MODE PANEL (KEY 'P' OR '⚙️ DEV' BUTTON — 11 BUTTONS) -->
-    <div id="debug-modal" class="modal-backdrop hidden interactive">
+    <div id="debug-modal" class="modal-backdrop hidden interactive" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="debug-modal-title">
       <div class="modal-window debug-window">
         <div class="modal-header">
-          <h2>⚙️ PAINEL DESENVOLVEDOR / GOD MODE (FÍSICA PAUSADA)</h2>
-          <button id="btn-close-debug" class="btn-close">✕</button>
+          <h2 id="debug-modal-title">⚙️ PAINEL DESENVOLVEDOR / GOD MODE (FÍSICA PAUSADA)</h2>
+          <button id="btn-close-debug" class="btn-close" aria-label="Fechar Painel de Desenvolvedor">✕</button>
         </div>
         <div class="debug-buttons-grid">
           <button id="dbg-btn-1-godmode" class="btn-debug">🛡️ God Mode (Imortalidade OFF)</button>
@@ -177,10 +177,10 @@
     </div>
 
     <!-- GAME OVER & DPS ANALYTICS REPORT MODAL -->
-    <div id="gameover-modal" class="modal-backdrop hidden interactive">
+    <div id="gameover-modal" class="modal-backdrop hidden interactive" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="gameover-modal-title">
       <div class="modal-window modal-large">
         <div class="modal-header">
-          <h2>📊 RELATÓRIO FINAL DA PARTIDA &amp; ANALYTICS DE DPS</h2>
+          <h2 id="gameover-modal-title">📊 RELATÓRIO FINAL DA PARTIDA &amp; ANALYTICS DE DPS</h2>
         </div>
         <div id="gameover-summary" class="gameover-summary-row"></div>
         <div class="dps-table-container">
