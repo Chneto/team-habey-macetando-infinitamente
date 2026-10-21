@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Team Habey: Macetando Infinitamente — Action Roguelike Elemental</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>⚡</text></svg>" />
+  <!-- Google Fonts: Cinzel & MedievalSharp for Arcane High-Fantasy Presence -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=MedievalSharp&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="./assets/index-3JxjeP2S.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-XHOgwaCP.css">
+</head>
+<body>
+  <!-- Phaser 3 WebGL Canvas Container -->
+  <div id="game-container"></div>
+
+  <!-- Dynamic Boss Atmosphere Vignette -->
+  <div id="boss-vignette" class="hidden"></div>
+
+  <!-- Stitch Arcane Dark Fantasy & Neon Trim UI Overlay -->
+  <div id="ui-layer">
+    <div id="save-status" class="save-status" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+
+    <!-- MAIN MENU & 10 ELEMENTAL MAGES SELECTION -->
+    <section id="menu-screen" class="screen-panel interactive">
+      <header class="menu-header">
+        <div class="brand-block">
+          <span class="brand-tag">ESTÚDIO HABEY • BULLET HEAVEN ELEMENTAL</span>
+          <h1>TEAM HABEY: <span>MACETANDO INFINITAMENTE</span></h1>
+        </div>
+        <div class="menu-top-actions">
+          <div class="gold-pill">💰 Ouro Elemental: <strong class="menu-gold-amount">250</strong></div>
+          <button id="btn-open-shop" class="btn-arcane">🏛️ Loja de Talentos</button>
+          <button id="btn-open-grimoire" class="btn-arcane">📖 Grimório & Sinergias</button>
+          <button id="btn-start-game" class="btn-primary-glow">⚔️ INICIAR PARTIDA</button>
+        </div>
+      </header>
+
+      <div class="section-subtitle">
+        Selecione seu Mago Elemental (10 Personagens Únicos — Petrus Desbloqueado Inicialmente):
+      </div>
+
+      <div id="char-grid" class="char-grid"></div>
+    </section>
+
+    <!-- TALENT SHOP MODAL -->
+    <div id="shop-modal" class="modal-backdrop hidden interactive" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="shop-modal-title">
+      <div class="modal-window modal-large">
+        <div class="modal-header">
+          <h2 id="shop-modal-title">🏛️ Loja de Talentos Permanentes & Clonagem Elemental</h2>
+          <div class="gold-pill">💰 <strong class="menu-gold-amount">250</strong></div>
+          <button id="btn-close-shop" class="btn-close" aria-label="Fechar Loja de Talentos">✕</button>
+        </div>
+        <div id="talent-shop-list" class="talent-grid"></div>
+      </div>
+    </div>
+
+    <!-- INTERACTIVE GRIMOIRE & ACHIEVEMENTS MODAL -->
+    <div id="grimoire-modal" class="modal-backdrop hidden interactive" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="grimoire-modal-title">
+      <div class="modal-window modal-large">
+        <div class="modal-header">
+          <h2 id="grimoire-modal-title">📖 Grimório Arcano: Evoluções (★), Fusões (★★) e Reações</h2>
+          <button id="btn-close-grimoire" class="btn-close" aria-label="Fechar Grimório Arcano">✕</button>
+        </div>
+        <div id="grimoire-content" class="grimoire-scroll"></div>
+      </div>
+    </div>
+
+    <!-- IN-GAME HUD (NON-BLOCKING CONTAINER) -->
+    <section id="hud-screen" class="hud-layer hidden">
+      <!-- Top Status Bar -->
+      <div class="hud-top-bar">
+        <div class="hud-bars-group">
+          <div class="bar-wrapper hp-bar-wrapper">
+            <div id="hud-hp-fill" class="bar-fill hp-fill" style="width: 100%"></div>
+            <span id="hud-hp-text" class="bar-label">120 / 120</span>
+          </div>
+          <div class="bar-wrapper xp-bar-wrapper">
+            <div id="hud-xp-fill" class="bar-fill xp-fill" style="width: 0%"></div>
+            <span id="hud-level-badge" class="bar-label">NV. 1</span>
+          </div>
+        </div>
+
+        <div class="hud-center-clock">
+          <div id="hud-timer" class="hud-clock">00:00</div>
+          <div class="hud-counters">
+            <span id="hud-kills">💀 0</span>
+            <span id="hud-gold">💰 250</span>
+            <span id="hud-dash-charges">💨 Dash: 1/1</span>
+          </div>
+        </div>
+
+        <div class="hud-right-controls interactive">
+          <label class="vfx-slider-box" title="Controle de Poluição Visual (Opacidade de Magias 20% a 100%)">
+            <span>✨ VFX: <strong id="vfx-opacity-value">100%</strong></span>
+            <input id="vfx-opacity-slider" type="range" min="20" max="100" value="100" />
+          </label>
+          <button id="btn-open-debug" class="btn-dev-toggle" title="Atalho: Tecla P">⚙️ DEV (P)</button>
+        </div>
+      </div>
+
+      <!-- Boss & Mini-Boss Arena Bar + 3-Min Sudden Death Timer -->
+      <div id="boss-hud" class="boss-hud-panel hidden">
+        <div id="boss-hud-name" class="boss-name">💀 Arconte</div>
+        <div id="boss-hud-affixes" class="boss-affixes">Afixos: Vampírico</div>
+        <div id="boss-hud-affinity" class="boss-affinity">Resistente a Fogo [-50%] | Vulnerável a Gelo [+50%]</div>
+        <div class="boss-hp-track">
+          <div id="boss-hud-hp-fill" class="boss-hp-fill" style="width: 100%"></div>
+        </div>
+        <div id="boss-hud-subtimer" class="boss-subtimer">⏳ Morte Súbita em: 03:00</div>
+      </div>
+
+      <!-- Dynamic Horde / Chest Event Banner -->
+      <div id="event-banner" class="event-banner hidden"></div>
+
+      <!-- Off-Screen Edge Indicator Arrows (Gold Chests & Green Pet Cages) -->
+      <div id="edge-indicators" class="edge-indicators-layer"></div>
+
+      <!-- 5 Active Slots & 5 Passive Slots Bar -->
+      <div class="hud-bottom-slots">
+        <div class="slots-group">
+          <span class="slots-group-title">⚔️ 5 SLOTS ATIVOS</span>
+          <div id="hud-active-slots" class="slots-row"></div>
+        </div>
+        <div class="slots-group">
+          <span class="slots-group-title">🛡️ 5 SLOTS PASSIVOS</span>
+          <div id="hud-passive-slots" class="slots-row"></div>
+        </div>
+      </div>
+
+      <!-- Mobile / Touch Controls (Virtual Joystick + Dash Button) -->
+      <div id="mobile-controls" class="mobile-controls-layer">
+        <div id="mobile-joystick-zone" class="joystick-zone interactive">
+          <div id="mobile-joystick-knob" class="joystick-knob"></div>
+        </div>
+        <button id="btn-mobile-dash" class="btn-mobile-dash interactive">💨 DASH</button>
+      </div>
+    </section>
+
+    <!-- LEVEL UP MODAL (RARITY FRAMES + SYNERGY HINTS + REROLL / BANISH / SKIP) -->
+    <div id="levelup-modal" class="modal-backdrop hidden interactive" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="levelup-modal-title">
+      <div class="modal-window levelup-window">
+        <div class="levelup-header">
+          <h2 id="levelup-modal-title">⚡ ASCENSÃO ELEMENTAL — ESCOLHA SEU PODER</h2>
+          <p>Evoluções (Ativa+Passiva Nv.5) liberam 1 Slot Passivo • Fusões (Ativa+Ativa Nv.5) liberam 1 Slot Ativo!</p>
+        </div>
+        <div id="levelup-cards-container" class="levelup-cards-row"></div>
+        <div class="levelup-actions-row">
+          <button id="btn-lvl-reroll" class="btn-arcane" aria-label="Rolar novas cartas de poder">🎲 Reroll (2)</button>
+          <button id="btn-lvl-banish" class="btn-arcane" aria-label="Banir habilidade">🚫 Banir (2)</button>
+          <button id="btn-lvl-skip" class="btn-arcane" aria-label="Pular ascensão e ganhar experiência">⏭️ Pular (+50% XP)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEVELOPER / GOD MODE PANEL (KEY 'P' OR '⚙️ DEV' BUTTON — 11 BUTTONS) -->
+    <div id="debug-modal" class="modal-backdrop hidden interactive" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="debug-modal-title">
+      <div class="modal-window debug-window">
+        <div class="modal-header">
+          <h2 id="debug-modal-title">⚙️ PAINEL DESENVOLVEDOR / GOD MODE (FÍSICA PAUSADA)</h2>
+          <button id="btn-close-debug" class="btn-close" aria-label="Fechar Painel de Desenvolvedor">✕</button>
+        </div>
+        <div class="debug-buttons-grid">
+          <button id="dbg-btn-1-godmode" class="btn-debug">🛡️ God Mode (Imortalidade OFF)</button>
+          <button id="dbg-btn-2-lvl1" class="btn-debug">⬆️ +1 Nível Instantâneo</button>
+          <button id="dbg-btn-3-lvl10" class="btn-debug">🚀 +10 Níveis Instantâneos</button>
+          <button id="dbg-btn-4-max-equipped" class="btn-debug">⭐ Maximizar Habilidades Equipadas (Nv. 5)</button>
+          <button id="dbg-btn-5-force-evo" class="btn-debug">🔥 Forçar Evolução Suprema das Armas Equipadas</button>
+          <button id="dbg-btn-6-spawn-chest" class="btn-debug">📦 Spawnar Baú de Tesouro ao Lado</button>
+          <button id="dbg-btn-7-spawn-cage" class="btn-debug">🐾 Spawnar Jaula de Pet ao Lado</button>
+          <button id="dbg-btn-8-spawn-miniboss" class="btn-debug">👹 Spawnar Mini-Boss Agora</button>
+          <button id="dbg-btn-9-spawn-boss" class="btn-debug">💀 Spawnar Boss Principal Agora</button>
+          <button id="dbg-btn-10-unlock-all" class="btn-debug">💰 +10.000 Ouro &amp; Desbloquear Todos os 10 Personagens/Grimório</button>
+          <button id="dbg-btn-11-kill-all" class="btn-debug">💥 Matar Todos os Inimigos na Tela</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GAME OVER & DPS ANALYTICS REPORT MODAL -->
+    <div id="gameover-modal" class="modal-backdrop hidden interactive" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="gameover-modal-title">
+      <div class="modal-window modal-large">
+        <div class="modal-header">
+          <h2 id="gameover-modal-title">📊 RELATÓRIO FINAL DA PARTIDA &amp; ANALYTICS DE DPS</h2>
+        </div>
+        <div id="gameover-summary" class="gameover-summary-row"></div>
+        <div class="dps-table-container">
+          <table class="dps-table">
+            <thead>
+              <tr>
+                <th>Habilidade / Pet</th>
+                <th>Dano Total</th>
+                <th>DPS Médio</th>
+                <th>% do Dano da Partida</th>
+              </tr>
+            </thead>
+            <tbody id="dps-analytics-tbody"></tbody>
+          </table>
+        </div>
+        <div class="gameover-actions">
+          <button id="btn-gameover-restart" class="btn-primary-glow">🔄 JOGAR NOVAMENTE</button>
+          <button id="btn-gameover-menu" class="btn-arcane">🏠 VOLTAR AO MENU</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
