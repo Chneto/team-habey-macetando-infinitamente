@@ -4,7 +4,7 @@ flux_client.py
 Cliente de automação para geração de arte e sprites via FLUX Schnell no WebUI Forge local.
 Conecta em http://127.0.0.1:7860/sdapi/v1/txt2img
 Aplica geração determinística para todos os magos, monstros, chefes de marco e biomas.
-Salva diretamente na fonte canônica: public/assets/sprites/ e espelha em assets/sprites/
+Salva diretamente na fonte canônica: public/assets/sprites/
 """
 
 import sys
@@ -23,7 +23,6 @@ if hasattr(sys.stderr, 'reconfigure'):
 
 FORGE_API_URL = os.environ.get("FORGE_API_URL", "http://127.0.0.1:7860")
 OUT_DIR = Path(__file__).resolve().parent.parent / "public" / "assets" / "sprites"
-MIRROR_DIR = Path(__file__).resolve().parent.parent / "assets" / "sprites"
 
 PROMPT_STYLE_PREFIX = (
     "masterpiece, 32-bit pixel art, arcane dark fantasy, vivid elemental magic lighting, "
@@ -177,12 +176,9 @@ def generate_flux_image(key, config):
                 if images:
                     img_data = base64.b64decode(images[0])
                     OUT_DIR.mkdir(parents=True, exist_ok=True)
-                    MIRROR_DIR.mkdir(parents=True, exist_ok=True)
 
                     target_file = OUT_DIR / f"{key}.png"
-                    mirror_file = MIRROR_DIR / f"{key}.png"
                     target_file.write_bytes(img_data)
-                    mirror_file.write_bytes(img_data)
                     print(f"[OK] [FLUX] Gerado com sucesso: {target_file.name} ({len(img_data)} bytes)")
                     return True
     except Exception as e:

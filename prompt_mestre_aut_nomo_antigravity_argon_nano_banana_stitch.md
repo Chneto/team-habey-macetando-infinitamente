@@ -29,7 +29,7 @@ Antes de iniciar o código do jogo, crie na estrutura do projeto as seguintes Sk
 
 * **Skill 1: `nano-banana-sprite-forge` (`.agent/skills/sprite-forge/`)**
   * **Função:** Gera via `gemini API` (Nano Banana) folhas de sprites padronizadas em perspectiva *Top-Down 3/4 Dark-Fantasy Stylized HD*, sempre em grade horizontal de 4 quadros (`IDLE`, `WALK_1`, `WALK_2`, `CAST_ATTACK`) sobre fundo sólido `#FF00FF`.
-  * **Script Embutido (`/tools/process_sprites.py` ou `/tools/process_sprites.mjs`):** Remove todos os pixels próximos a `#FF00FF` convertendo-os em canal Alpha transparente real, aplica um contorno escuro/luminoso de $1\text{px}$ para legibilidade, centraliza a caixa de colisão e salva os arquivos `.png` e `.json` em `/assets/sprites/`.
+  * **Script Embutido (`/tools/process_sprites.py` ou `/tools/process_sprites.mjs`):** Remove todos os pixels próximos a `#FF00FF` convertendo-os em canal Alpha transparente real, aplica um contorno escuro/luminoso de $1\text{px}$ para legibilidade, centraliza a caixa de colisão e salva os arquivos `.png` e `.json` em `/public/assets/sprites/`.
   * **Mecanismo de Segurança (Zero-Crash Fallback):** O carregador de assets do jogo (`AssetManager.js`) deve verificar se cada `.png` existe; caso algum asset ainda esteja sendo processado ou falhe, ele gera instantaneamente em memória WebGL uma textura multi-camadas animada para aquela entidade, garantindo que o jogo nunca trave ou exiba quadrados pretos.
 * **Skill 2: `stitch-ui-architect` (`.agent/skills/stitch-ui/`)**
   * **Função:** Usa o `StitchMCP` para gerar componentes de interface responsivos com estética *Arcane Dark Fantasy & Neon Trim*, conectando-os via `CustomEvents` do DOM ao motor Phaser 3.

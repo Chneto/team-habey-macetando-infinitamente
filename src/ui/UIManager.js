@@ -20,11 +20,45 @@ export class UIManager {
     this.currentChoices = [];
     this.banishMode = false;
     this.bannerTimeout = null;
+    this.saveNoticeTimeout = null;
     this.bindGlobalUiEvents();
+    this.bindSaveEvents();
   }
 
   setGameScene(gameScene) {
     this.scene = gameScene;
+  }
+
+  bindSaveEvents() {
+    window.addEventListener('habey:save-failed', (event) => {
+      this.showSaveNotice(
+        event.detail?.message || 'Não foi possível salvar seu progresso neste dispositivo.',
+        'error'
+      );
+    });
+    window.addEventListener('habey:save-recovered', (event) => {
+      this.showSaveNotice(event.detail?.message || 'O jogo recuperou os dados salvos.', 'warning');
+    });
+
+    if (saveManager.startupNotice) {
+      this.showSaveNotice(saveManager.startupNotice.message, saveManager.startupNotice.kind);
+      saveManager.startupNotice = null;
+    }
+  }
+
+  showSaveNotice(message, kind = 'warning') {
+    const status = document.getElementById('save-status');
+    if (!status) return;
+
+    status.textContent = message;
+    status.classList.toggle('is-error', kind === 'error');
+    status.hidden = false;
+
+    if (this.saveNoticeTimeout) clearTimeout(this.saveNoticeTimeout);
+    this.saveNoticeTimeout = setTimeout(() => {
+      status.hidden = true;
+      this.saveNoticeTimeout = null;
+    }, 8000);
   }
 
   bindGlobalUiEvents() {
@@ -659,7 +693,8 @@ export class UIManager {
     container.innerHTML = '';
 
     for (const choice of this.currentChoices) {
-      const card = document.createElement('div');
+      const card = document.createElement('button');
+      card.type = 'button';
       card.className = `lvl-card rarity-${choice.rarity.id} ${this.banishMode ? 'banish-target' : ''}`;
       card.style.borderColor = choice.rarity.borderHex;
 
@@ -669,12 +704,12 @@ export class UIManager {
           : choice.rarity.name;
 
       card.innerHTML = `
-        <div class="lvl-card-rarity" style="background:${choice.rarity.borderHex}">${choice.rarity.badge}</div>
-        <div class="lvl-card-icon">${choice.data.icon}</div>
-        <h3 class="lvl-card-title">${choice.data.name}</h3>
-        <div class="lvl-card-step">${lvlInfo}</div>
-        <p class="lvl-card-desc">${choice.data.description}</p>
-        <div class="lvl-card-synergy">${choice.synergyHint}</div>
+        <span class="lvl-card-rarity" style="background:${choice.rarity.borderHex}">${choice.rarity.badge}</span>
+        <span class="lvl-card-icon">${choice.data.icon}</span>
+        <span class="lvl-card-title">${choice.data.name}</span>
+        <span class="lvl-card-step">${lvlInfo}</span>
+        <span class="lvl-card-desc">${choice.data.description}</span>
+        <span class="lvl-card-synergy">${choice.synergyHint}</span>
       `;
 
       card.onclick = () => this.selectLevelUpCard(choice);

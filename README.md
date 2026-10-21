@@ -103,8 +103,11 @@ O projeto conta com suíte automatizada de testes e simulação combinatória:
   ```
 * **Testes Ponta a Ponta (Playwright E2E)**:
   ```bash
+  npm run qa:install  # execute uma vez para instalar o Chromium do Playwright
   npm run qa
   ```
+
+Se já tiver outro Chromium instalado, defina `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` com o caminho do executável antes de rodar `npm run qa`.
 
 ---
 

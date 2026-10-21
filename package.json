@@ -11,6 +11,7 @@
     "flux:generate": "python tools/flux_client.py",
     "balance": "node tools/validate_balance.mjs",
     "lint": "eslint src/",
+    "qa:install": "playwright install chromium",
     "qa": "node tools/qa_runner.mjs"
   },
   "dependencies": {

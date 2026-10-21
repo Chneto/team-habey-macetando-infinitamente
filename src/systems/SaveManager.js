@@ -238,8 +238,17 @@ function migrateAndValidateSave(rawObj) {
 
 class SaveManager {
   constructor() {
+    this.persistenceBlocked = false;
+    this.blockedSaveWarningSent = false;
+    this.startupNotice = null;
     this.data = this.load();
     this.firebaseConnected = false;
+  }
+
+  dispatchSaveEvent(eventName, detail) {
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new CustomEvent(eventName, { detail }));
+    }
   }
 
   load() {
@@ -251,29 +260,64 @@ class SaveManager {
       raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) {
         const def = createDefaultSave();
-        this.persistRaw(JSON.stringify(def));
+        if (!this.persistRaw(JSON.stringify(def))) {
+          this.startupNotice = {
+            kind: 'error',
+            message: 'O armazenamento local está indisponível. Seu progresso não poderá ser salvo neste dispositivo.'
+          };
+        }
         return def;
       }
       const parsed = JSON.parse(raw);
+
+      const savedVersion = Number(parsed?.version ?? 1);
+      if (Number.isFinite(savedVersion) && savedVersion > CURRENT_SAVE_VERSION) {
+        this.persistenceBlocked = true;
+        this.startupNotice = {
+          kind: 'warning',
+          message: 'Este progresso foi salvo por uma versão mais nova do jogo. Seus dados foram preservados; atualize o jogo para continuar salvando.'
+        };
+        return createDefaultSave();
+      }
+
       const validated = migrateAndValidateSave(parsed);
-      this.persistRaw(JSON.stringify(validated));
+      if (!this.persistRaw(JSON.stringify(validated))) {
+        this.startupNotice = {
+          kind: 'error',
+          message: 'Não foi possível atualizar o save neste dispositivo. Seu progresso atual pode não ser gravado.'
+        };
+      }
       return validated;
     } catch (err) {
       console.warn('[SaveManager] Corrupted save detected. Preserving backup before recovery:', err);
+      let backupPreserved = false;
       if (raw && typeof localStorage !== 'undefined') {
         try {
           localStorage.setItem(`${CORRUPT_BACKUP_KEY}_${Date.now()}`, raw);
-        } catch (_bErr) {}
+          backupPreserved = true;
+        } catch (_bErr) {
+          // Recovery below still allows the game to start if storage has no room for a backup.
+        }
       }
       const def = createDefaultSave();
-      this.persistRaw(JSON.stringify(def));
-      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-        window.dispatchEvent(
-          new CustomEvent('habey:save-recovered', {
-            detail: { message: 'Dados salvos anteriores corrompidos foram restaurados com segurança para o padrão.' }
-          })
-        );
+      const persisted = this.persistRaw(JSON.stringify(def));
+      if (!persisted) {
+        this.startupNotice = {
+          kind: 'error',
+          message: 'O save anterior estava corrompido e não foi possível gravar a recuperação neste dispositivo.'
+        };
+      } else if (backupPreserved) {
+        this.startupNotice = {
+          kind: 'warning',
+          message: 'O save anterior estava corrompido. Uma cópia foi preservada e o jogo restaurou os dados padrão.'
+        };
+      } else {
+        this.startupNotice = {
+          kind: 'warning',
+          message: 'O save anterior estava corrompido. O jogo restaurou os dados padrão, mas não conseguiu criar uma cópia de segurança.'
+        };
       }
+      this.dispatchSaveEvent('habey:save-recovered', { message: this.startupNotice.message });
       return def;
     }
   }
@@ -285,32 +329,30 @@ class SaveManager {
       return true;
     } catch (err) {
       console.error('[SaveManager] Failed to write localStorage:', err);
-      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-        window.dispatchEvent(
-          new CustomEvent('habey:save-failed', {
-            detail: {
-              error: err.name || 'StorageError',
-              message: 'Armazenamento local cheio ou indisponível. Progresso não gravado no disco!'
-            }
-          })
-        );
-      }
+      this.dispatchSaveEvent('habey:save-failed', {
+        error: err.name || 'StorageError',
+        message: 'Armazenamento local cheio ou indisponível. Seu progresso pode não ser salvo.'
+      });
       return false;
     }
   }
 
   save() {
+    if (this.persistenceBlocked) {
+      if (!this.blockedSaveWarningSent) {
+        this.blockedSaveWarningSent = true;
+        this.dispatchSaveEvent('habey:save-failed', {
+          message: 'O save pertence a uma versão mais nova. O jogo está impedido de sobrescrevê-lo.'
+        });
+      }
+      return false;
+    }
+
     this.data.lastUpdated = Date.now();
     const serialized = JSON.stringify(this.data);
     const success = this.persistRaw(serialized);
     this.syncWithFirebase();
-    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-      window.dispatchEvent(
-        new CustomEvent('habey:save-updated', {
-          detail: { ...this.data, isPersisted: success }
-        })
-      );
-    }
+    this.dispatchSaveEvent('habey:save-updated', { ...this.data, isPersisted: success });
     return success;
   }
 

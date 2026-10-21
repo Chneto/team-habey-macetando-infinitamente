@@ -43,7 +43,11 @@ async function runQaSuite() {
   let browser = null;
 
   try {
-    browser = await chromium.launch({ headless: true });
+    const launchOptions = { headless: true };
+    if (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
+      launchOptions.executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+    }
+    browser = await chromium.launch(launchOptions);
     const context = await browser.newContext({
       viewport: { width: 1280, height: 720 },
       hasTouch: true
@@ -54,7 +58,10 @@ async function runQaSuite() {
     const pageErrors = [];
 
     page.on('console', (msg) => {
-      if (msg.type() === 'error') {
+      if (
+        msg.type() === 'error' &&
+        !msg.text().startsWith('[SaveManager] Failed to write localStorage:')
+      ) {
         consoleErrors.push(msg.text());
       }
     });
@@ -66,6 +73,16 @@ async function runQaSuite() {
 
     // Wait for Phaser BootScene -> MenuScene transition
     await page.waitForSelector('#char-grid .char-card', { timeout: 10000 });
+
+    const touchScrollState = await page.evaluate(() => ({
+      page: getComputedStyle(document.body).touchAction,
+      menu: getComputedStyle(document.getElementById('menu-screen')).touchAction,
+      modal: getComputedStyle(document.querySelector('.modal-window')).touchAction
+    }));
+    assert.equal(touchScrollState.page, 'auto', 'The page must allow browser touch gestures by default');
+    assert.equal(touchScrollState.menu, 'pan-y', 'The menu must support vertical touch scrolling');
+    assert.equal(touchScrollState.modal, 'pan-y', 'Scrollable dialogs must support vertical touch scrolling');
+    console.log('✔ Check 0: Touch scrolling remains enabled in the menu and scrollable dialogs.');
 
     // CHECK 1: All 10 characters appear in selection, starting with Petrus unlocked & selected
     const charCards = await page.locator('#char-grid .char-card').count();
@@ -338,9 +355,23 @@ async function runQaSuite() {
     const lvlModalVisible = await page.locator('#levelup-modal').evaluate((el) => !el.classList.contains('hidden'));
     assert.equal(lvlModalVisible, true, 'Button 2 must trigger Level-Up modal');
 
+    const firstLevelCard = page.locator('#levelup-cards-container .lvl-card').first();
+    const levelCardSemantics = await firstLevelCard.evaluate((el) => ({
+      tagName: el.tagName,
+      tabIndex: el.tabIndex
+    }));
+    assert.equal(levelCardSemantics.tagName, 'BUTTON', 'Level-up cards must use native button semantics');
+    assert(levelCardSemantics.tabIndex >= 0, 'Level-up cards must be reachable with the keyboard');
+    await firstLevelCard.focus();
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.getElementById('levelup-modal').classList.contains('hidden'));
+    await page.evaluate(() => window.__HABEY_SCENE__.queueLevelUp());
+    await page.waitForFunction(() => !document.getElementById('levelup-modal').classList.contains('hidden'));
+
     // Test Reroll & Skip buttons inside Level-Up modal
     await page.click('#btn-lvl-reroll');
     await page.click('#btn-lvl-skip');
+    await page.waitForFunction(() => document.getElementById('levelup-modal').classList.contains('hidden'));
 
     // Re-open Debug Panel and test Button 3 (+10 Instant Levels)
     await page.click('#btn-open-debug');
@@ -350,10 +381,11 @@ async function runQaSuite() {
     assert.equal(lvlAfter10, lvlBefore10 + 10, 'Button 3 must add +10 levels immediately');
 
     // Resolve queued level-ups by clicking first card or skip
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 15; i++) {
       const isVisible = await page.locator('#levelup-modal').evaluate((el) => !el.classList.contains('hidden'));
       if (!isVisible) break;
       await page.click('#btn-lvl-skip');
+      await page.waitForTimeout(150);
     }
 
     console.log('✔ Check 5: All 11 Debug Panel (P / ⚙️ DEV) buttons & Level-Up Reroll/Skip verified.');
@@ -660,6 +692,7 @@ async function runQaSuite() {
       const orbitalDamagedChest = chest.hp < chestHpBefore || !chest.active;
 
       // 6. Verify Stampede enemy releases stampedeVelocity when > 1100px away
+      s.enemiesFrozenUntil = 0;
       const stampedeMob = ss.spawnEnemyAt(
         s.player.sprite.x + 1200,
         s.player.sprite.y,
@@ -668,9 +701,17 @@ async function runQaSuite() {
         null,
         { stampedeVelocity: { vx: 340, vy: 0 } }
       );
+      stampedeMob.sprite.setPosition(s.player.sprite.x + 1201, s.player.sprite.y);
+      stampedeMob.stunnedUntil = 0;
       const hadStampedeBefore = Boolean(stampedeMob.stampedeVelocity);
       stampedeMob.update(now + 100, 16, s.player);
       const stampedeReleased = hadStampedeBefore && stampedeMob.stampedeVelocity === null;
+      const stampedeReleaseDiagnostic = {
+        distance: Math.hypot(stampedeMob.sprite.x - s.player.sprite.x, stampedeMob.sprite.y - s.player.sprite.y),
+        active: stampedeMob.sprite.active,
+        dead: stampedeMob.isDead,
+        retainedVelocity: stampedeMob.stampedeVelocity
+      };
 
       // 7. Verify gainInstantLevels updates xpToNext
       const xpNextBefore = s.player.xpToNext;
@@ -733,6 +774,7 @@ async function runQaSuite() {
         orbitalSpritesCreated,
         orbitalDamagedChest,
         stampedeReleased,
+        stampedeReleaseDiagnostic,
         xpNextUpdated: xpNextAfter > xpNextBefore,
         bossTintedWhenAfflicted,
         bossUntintedWhenExpired,
@@ -752,7 +794,11 @@ async function runQaSuite() {
     assert.equal(visualAndFixesCheck.temporalNeedleSlowApplied, true, 'Chronos temporal_needle must apply 35% slow on hit');
     assert.equal(visualAndFixesCheck.orbitalSpritesCreated, true, 'Solarius solar_hammer must create persistent orbital warhammer sprites');
     assert.equal(visualAndFixesCheck.orbitalDamagedChest, true, 'Solarius solar_hammer must damage Treasure Chests/Cages in orbit');
-    assert.equal(visualAndFixesCheck.stampedeReleased, true, 'Stampede enemies must release stampedeVelocity once >1100px off-screen');
+    assert.equal(
+      visualAndFixesCheck.stampedeReleased,
+      true,
+      `Stampede enemies must release stampedeVelocity once >1100px off-screen: ${JSON.stringify(visualAndFixesCheck.stampedeReleaseDiagnostic)}`
+    );
     assert.equal(visualAndFixesCheck.xpNextUpdated, true, 'gainInstantLevels must update xpToNext');
     assert.equal(visualAndFixesCheck.bossTintedWhenAfflicted, true, 'Bosses with preserveBasePalette must show elemental tint when afflicted');
     assert.equal(visualAndFixesCheck.bossUntintedWhenExpired, true, 'Bosses with preserveBasePalette must restore base palette when element expires');
@@ -760,6 +806,88 @@ async function runQaSuite() {
     assert.equal(visualAndFixesCheck.paradoxRuptureTriggered, true, 'Paradox Singularity (arcane+arcane) must trigger dimensional_rupture');
     assert.equal(visualAndFixesCheck.totemSpriteCreated, true, 'Spirit Totem zone must spawn a proj_totem pillar sprite');
     console.log('✔ Deep Edge Case 8: Custom Boss/Projectile Textures, Boss Elemental Tints, Dual Fusion Mechanics, Totems, Character Trait Layers, Enemy World HP Bars & Bestiary verified.');
+
+    const saveFailureUi = await page.evaluate(async () => {
+      const { saveManager } = await import('/src/systems/SaveManager.js');
+      const originalSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        if (key === 'team_habey_save_v1') {
+          throw new DOMException('Storage quota exceeded', 'QuotaExceededError');
+        }
+        return originalSetItem.call(this, key, value);
+      };
+
+      let persisted;
+      try {
+        persisted = saveManager.save();
+      } finally {
+        Storage.prototype.setItem = originalSetItem;
+      }
+
+      saveManager.save();
+      const status = document.getElementById('save-status');
+      return { persisted, visible: !status.hidden, message: status.textContent };
+    });
+    assert.equal(saveFailureUi.persisted, false, 'A failed localStorage write must report failure');
+    assert.equal(saveFailureUi.visible, true, 'A failed save must be visible to the player');
+    assert.match(saveFailureUi.message, /armazenamento local/i);
+    console.log('✔ Save failure is reported in the visible, accessible status message.');
+
+    const futureSaveRaw = await page.evaluate(() => {
+      const key = 'team_habey_save_v1';
+      const futureSave = JSON.parse(localStorage.getItem(key));
+      futureSave.version = 999;
+      futureSave.futureVersionMarker = 'keep-me';
+      const raw = JSON.stringify(futureSave);
+      localStorage.setItem(key, raw);
+      return raw;
+    });
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForSelector('#char-grid .char-card', { timeout: 10000 });
+    const futureSaveCheck = await page.evaluate(async () => {
+      const { saveManager } = await import('/src/systems/SaveManager.js');
+      const beforeSave = localStorage.getItem('team_habey_save_v1');
+      const allowedToOverwrite = saveManager.save();
+      const status = document.getElementById('save-status');
+      return {
+        unchanged: beforeSave === localStorage.getItem('team_habey_save_v1'),
+        allowedToOverwrite,
+        notice: status.textContent
+      };
+    });
+    assert.equal(futureSaveCheck.unchanged, true, 'A newer save schema must not be overwritten by an older game version');
+    assert.equal(futureSaveCheck.allowedToOverwrite, false, 'Saving must be blocked for a newer save schema');
+    assert.match(futureSaveCheck.notice, /versão mais nova/i);
+    assert(futureSaveRaw.includes('keep-me'), 'The future save test payload must include its preservation marker');
+    console.log('✔ Future-version saves are preserved and cannot be overwritten by this build.');
+
+    const recoveryContext = await browser.newContext({
+      viewport: { width: 1280, height: 720 },
+      hasTouch: true
+    });
+    const recoveryPage = await recoveryContext.newPage();
+    await recoveryPage.addInitScript(() => {
+      localStorage.setItem('team_habey_save_v1', '{invalid-json');
+    });
+    await recoveryPage.goto(URL, { waitUntil: 'networkidle' });
+    await recoveryPage.waitForSelector('#char-grid .char-card', { timeout: 10000 });
+    const recoveryCheck = await recoveryPage.evaluate(() => {
+      const save = JSON.parse(localStorage.getItem('team_habey_save_v1'));
+      const backupKeys = Object.keys(localStorage).filter((key) =>
+        key.startsWith('habey_elemental_save_corrupt_backup_')
+      );
+      const status = document.getElementById('save-status');
+      return {
+        version: save.version,
+        backupCount: backupKeys.length,
+        notice: status.textContent
+      };
+    });
+    assert.equal(recoveryCheck.version, 2, 'Corrupt saves must recover into the current schema');
+    assert.equal(recoveryCheck.backupCount, 1, 'The corrupt save must be backed up before recovery');
+    assert.match(recoveryCheck.notice, /cópia foi preservada/i);
+    await recoveryContext.close();
+    console.log('✔ Corrupt saves are backed up, recovered, and explained in the interface.');
 
     assert.equal(consoleErrors.length, 0, `Console errors detected: ${consoleErrors.join('; ')}`);
     assert.equal(pageErrors.length, 0, `Uncaught page errors detected: ${pageErrors.join('; ')}`);

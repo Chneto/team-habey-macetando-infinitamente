@@ -7,14 +7,11 @@ import {
   PETS_DATA
 } from '../src/config/enemiesData.js';
 
-const CANONICAL_OUT_DIR = path.resolve(process.cwd(), 'public/assets/sprites');
-const ROOT_OUT_DIR = path.resolve(process.cwd(), 'assets/sprites');
-fs.mkdirSync(CANONICAL_OUT_DIR, { recursive: true });
-fs.mkdirSync(ROOT_OUT_DIR, { recursive: true });
+const OUT_DIR = path.resolve(process.cwd(), 'public/assets/sprites');
+fs.mkdirSync(OUT_DIR, { recursive: true });
 
 function writeSpriteFile(filename, buffer) {
-  fs.writeFileSync(path.join(CANONICAL_OUT_DIR, filename), buffer);
-  fs.writeFileSync(path.join(ROOT_OUT_DIR, filename), buffer);
+  fs.writeFileSync(path.join(OUT_DIR, filename), buffer);
 }
 
 // CRC32 Table for PNG chunk encoding
@@ -1314,5 +1311,5 @@ drawBossSheet('boss_kryos', {
   saveSpriteAsset('arcane_floor', w, h, w, h, 1, rgba);
 }
 
-console.log(`✔ Generated and chroma-keyed all bespoke HD sprite sheets & metadata into ${CANONICAL_OUT_DIR} and ${ROOT_OUT_DIR}`);
+console.log(`✔ Generated and chroma-keyed all bespoke HD sprite sheets & metadata into ${OUT_DIR}`);
 
